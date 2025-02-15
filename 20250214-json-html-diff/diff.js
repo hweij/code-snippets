@@ -19,9 +19,15 @@ class VElement {
     attributes;
     /**
      * Node children
-     * @type VElement[] | undefined
+     * @type VElement[]
      */
     children;
+    /**
+     * Parent node, if any
+     *
+     * @type VElement | undefined;
+     */
+    parent;
     /**
      * Corresponding HTML element
      * @type HTMLElement
@@ -34,7 +40,15 @@ class VElement {
     constructor(desc) {
         this.tag = desc.tag;
         this.attributes = Object.assign({}, desc.attributes);
-        this.children = desc.children ? desc.children.map(c => new VElement(c)) : undefined;
+        this.children = [];
+        if (desc.children) {
+            for (const cs of desc.children) {
+                const c = new VElement(cs);
+                c.parent = this;
+                this.children.push(c);
+            }
+            this.children = desc.children ? desc.children.map(c => new VElement(c)) : [];
+        }
         this.html = document.createElement(this.tag);
 
         for (const [k, v] of Object.entries(this.attributes)) {
@@ -54,6 +68,38 @@ class VElement {
             const children = this.children.map(c => c.html);
             this.html.append(...children);
         }
+    }
+
+    /**
+     * Remove element from child list
+     *
+     * @param {VElement} c
+     */
+    removeChild(c) {
+        const idx = this.children.indexOf(c);
+        if (idx < 0) {
+            throw (new Error("Child does not exist in parent"));
+        }
+        this.children.splice(idx, 1);
+        // Remove html
+        this.html.removeChild(c.html);
+        c.parent = undefined;
+    }
+
+    /**
+     *
+     * @param {VElement} c
+     * @param {number} i
+     */
+    insertChild(c, i) {
+        c.parent?.removeChild(c);
+        // Parent of c has been removed, set new parent
+        c.parent = this;
+        // Add it
+        this.children.splice(i, 0, c);
+        // Update html parent
+        const nxt = this.html.children[i];
+        this.html.insertBefore(c.html, nxt);
     }
 }
 
@@ -95,7 +141,7 @@ export class NodeRenderer {
         }
         const vel = entry.vel;
 
-        // Synchronize attributes
+        // ***** Attributes
         // remove attributes that will not be present anymore
         for (const k of Object.keys(vel.attributes)) {
             if (!src.hasOwnProperty(k)) {
@@ -120,6 +166,32 @@ export class NodeRenderer {
                 }
             }
         }
+
+        // ***** Children
+        if (src.children) {
+            for (let i = 0; i < src.children.length; i++) {
+                const cs = src.children[i];
+                if (vel.children[i] !== cs) {
+                    // Does it exist yet?
+                    let c = this._elementMap.get(cs);
+                    if (!c) {
+                        c = { vel: new VElement(cs), generation: this.gen };
+                    }
+                    vel.insertChild(c.vel, i);
+                    // Insert element
+                    vel.children.splice(i, 0, c.vel);
+                }
+            }
+            // Any other children need to be removed
+            while (vel.children.length > src.children.length) {
+                vel.removeChild(vel.children[vel.children.length - 1]);
+            }
+        }
+        else {
+            vel.children.length = 0;
+            vel.html.innerHTML = "";
+        }
+
 
         // TODO: modify children
         //
