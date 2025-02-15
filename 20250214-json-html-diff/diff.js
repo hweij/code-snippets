@@ -7,31 +7,15 @@
  * Virtual element, maps 1:1 to HTML element
  */
 class VElement {
-    /**
-     * Tag name (HTML-tag)
-     * @type string
-     */
+    /** Tag name (HTML-tag) @type string */
     tag;
-    /**
-     * Node attributes
-     * @type AttrMap
-     */
+    /** Node attributes @type AttrMap */
     attributes;
-    /**
-     * Node children
-     * @type VElement[]
-     */
+    /** Node children @type VElement[] */
     children;
-    /**
-     * Parent node, if any
-     *
-     * @type VElement | undefined;
-     */
+    /** Parent node, if any @type VElement | undefined */
     parent;
-    /**
-     * Corresponding HTML element
-     * @type HTMLElement
-     */
+    /** Corresponding HTML element @type HTMLElement */
     html;
 
     /**
