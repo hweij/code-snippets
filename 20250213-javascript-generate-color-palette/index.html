@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Page Title</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <script src='colorswatch.js' type="module"></script>
+    <style>
+        body {
+            font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+        }
+
+        #colorSwatch {
+            font-family: 'Courier New', Courier, monospace;
+            display: grid;
+            grid-template-columns: max-content max-content;
+            gap: 4px;
+        }
+
+        .color-cell {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Creates and inserts color variables for given palettes</h2>
+
+    <p>
+        Generate a matching range of colors that can be used as style vars.
+    </p>
+
+    <div id="colorSwatch">
+    </div>
+</body>
+
+</html>
