@@ -8,11 +8,6 @@
  */
 class VElement {
     /**
-     * Unique ID, passed through the rendering to identify identical nodes
-     * @type string
-     */
-    uuid;
-    /**
      * Tag name (HTML-tag)
      * @type string
      */
@@ -37,11 +32,11 @@ class VElement {
      * @param {NodeDesc} desc
      */
     constructor(desc) {
-        this.uuid = desc.uuid;
         this.tag = desc.tag;
         this.attributes = Object.assign({}, desc.attributes);
         this.children = desc.children ? desc.children.map(c => new VElement(c)) : undefined;
         this.html = document.createElement(this.tag);
+
         for (const [k, v] of Object.entries(this.attributes)) {
             if (typeof v === "boolean") {
                 if (v) {
@@ -70,9 +65,9 @@ export class NodeRenderer {
     gen = 0;
 
     /**
-     * Maps uuid to generated virtual elements
+     * Maps source node to generated virtual elements
      *
-     * @type Map<string, { vel: VElement, generation: number }>
+     * @type Map<NodeDesc, { vel: VElement, generation: number }>
      */
     _elementMap = new Map();
 
@@ -85,19 +80,22 @@ export class NodeRenderer {
      * @param {NodeDesc} src
      */
     sync(src) {
+        // Next gen
         this.gen++;
-        // 1. Find generated virtual element that corresponds to the descriptor uuid
-        let entry = this._elementMap.get(src.uuid);
+
+        // Find generated virtual element that corresponds to the descriptor
+        let entry = this._elementMap.get(src);
         if (!entry) {
             // Does not exist yet, create it
             entry = { vel: new VElement(src), generation: this.gen };
-            this._elementMap.set(src.uuid, entry);
+            this._elementMap.set(src, entry);
         }
         else {
             entry.generation = this.gen;
         }
         const vel = entry.vel;
-        // 2. Synchronize attributes
+
+        // Synchronize attributes
         // remove attributes that will not be present anymore
         for (const k of Object.keys(vel.attributes)) {
             if (!src.hasOwnProperty(k)) {
@@ -137,9 +135,9 @@ export class NodeRenderer {
 
     cleanMap() {
         // Remove map entries that no longer exist
-        const removeList = Object.entries(this._elementMap).filter(([k, v]) => v.gen !== this.gen);
-        for (const [k, _v] of removeList) {
-            this._elementMap.delete(k);
+        const removeList = Object.values(this._elementMap).filter(v => v.gen !== this.gen);
+        for (const v of removeList) {
+            this._elementMap.delete(v);
         }
     }
 
@@ -158,11 +156,9 @@ export class NodeRenderer {
  * .NodeDesc
  */
 const nodeDesc = {
-    uuid: "100",
     tag: "div",
     children: [
         {
-            uuid: "101",
             tag: "div",
             attributes: {
                 expanded: true,
@@ -171,7 +167,6 @@ const nodeDesc = {
             }
         },
         {
-            uuid: "102",
             tag: "span",
             attributes: {
                 expanded: false,
