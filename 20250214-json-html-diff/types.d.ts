@@ -4,9 +4,9 @@ interface NodeDesc {
     /** Tag name (HTML-tag) */
     tag: string;
     /** Node attributes */
-    attributes?: { [id: string]: any };
+    attributes: { [id: string]: any };
     /** Node children */
     children?: NodeDesc[];
 }
 
-type AttrValue = { [id: string]: any };
+type AttrMap = { [id: string]: any };
