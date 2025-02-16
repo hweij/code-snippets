@@ -89,7 +89,7 @@ class VElement {
 
 export class NodeRenderer {
     /** Root node @type VElement */
-    _node;
+    _rootElement;
 
     /** Generation, used to detect deleted map entries */
     gen = 0;
@@ -102,7 +102,7 @@ export class NodeRenderer {
     _elementMap = new Map();
 
     constructor(desc) {
-        this._node = new VElement(desc);
+        this._rootElement = new VElement(desc);
     }
 
     /**
@@ -191,14 +191,15 @@ export class NodeRenderer {
 
     cleanMap() {
         // Remove map entries that no longer exist
-        const removeList = Object.values(this._elementMap).filter(v => v.gen !== this.gen);
-        for (const v of removeList) {
-            this._elementMap.delete(v);
+        for (const [k, v] of this._elementMap) {
+            if (v.generation !== this.gen) {
+                this._elementMap.delete(k);
+            }
         }
     }
 
     get node() {
-        return this._node;
+        return this._rootElement;
     }
 
     get html() {
