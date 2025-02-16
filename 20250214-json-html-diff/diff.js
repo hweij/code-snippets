@@ -68,6 +68,12 @@ export class NodeRenderer {
     /** Generation, used to detect deleted map entries */
     gen = 0;
 
+    /** Statistics */
+    stats = {
+        created: 0,
+        deleted: 0
+    };
+
     /**
      * Maps source node to generated virtual elements
      *
@@ -91,6 +97,7 @@ export class NodeRenderer {
     registerNewElement(desc) {
         const el = new VElement(desc.tag);
         this._elementMap.set(desc, { vel: el, generation: this.gen });
+        this.stats.created++;
         return el;
     }
 
@@ -98,11 +105,16 @@ export class NodeRenderer {
         // Next gen
         this.gen++;
 
+        this.stats.created = 0;
+        this.stats.deleted = 0;
+
         this.syncAttributes(desc, this._rootElement);
 
         this.syncChildren(desc, this._rootElement);
 
         this.cleanMap();
+
+        console.log(`Created ${this.stats.created} new elements, deleted ${this.stats.deleted} elements`);
     }
 
     /**
@@ -200,6 +212,7 @@ export class NodeRenderer {
         for (const [k, v] of this._elementMap) {
             if (v.generation !== this.gen) {
                 this._elementMap.delete(k);
+                this.stats.deleted++;
             }
         }
     }
@@ -230,9 +243,10 @@ const nodeDesc = {
             }
         },
         {
-            tag: "span",
+            tag: "div",
             attributes: {
                 expanded: false,
+                style: "width: 100px; height: 100px; background-color: green;",
                 value: 2
             }
         }
@@ -245,6 +259,20 @@ console.log(ns.node);
 document.body.appendChild(ns.html);
 
 window.setTimeout(() => {
+    // Test changing attribute value
     nodeDesc.children[0].attributes["style"] = "width: 100px; height: 50px; background-color: red;";
     ns.sync(nodeDesc);
+    window.setTimeout(() => {
+        // Test swapping two elements
+        const temp = nodeDesc.children[0];
+        nodeDesc.children[0] = nodeDesc.children[1];
+        nodeDesc.children[1] = temp;
+        ns.sync(nodeDesc);
+        // Remove
+        window.setTimeout(() => {
+            // Test swapping two elements
+            nodeDesc.children.splice(0, 1);
+            ns.sync(nodeDesc);
+        }, 3000);
+    }, 3000);
 }, 3000);
