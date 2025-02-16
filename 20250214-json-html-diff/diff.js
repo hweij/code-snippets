@@ -188,8 +188,10 @@ export class NodeRenderer {
             }
         }
         else {
-            vel.children.length = 0;
-            vel.html.innerHTML = "";
+            if (vel.children.length) {
+                vel.children.length = 0;
+                vel.html.innerHTML = "";
+            }
         }
     }
 
