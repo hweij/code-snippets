@@ -243,3 +243,8 @@ const nodeDesc = {
 const ns = new NodeRenderer(nodeDesc);
 console.log(ns.node);
 document.body.appendChild(ns.html);
+
+window.setTimeout(() => {
+    nodeDesc.children[0].attributes["style"] = "width: 100px; height: 50px; background-color: red;";
+    ns.sync(nodeDesc);
+}, 3000);
