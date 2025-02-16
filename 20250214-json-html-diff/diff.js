@@ -34,13 +34,11 @@ class VElement {
      * @param {VElement} c
      */
     removeChild(c) {
-        console.log(`Remove start: ${this.children.length}`);
         const idx = this.children.indexOf(c);
         if (idx < 0) {
             throw (new Error("Child does not exist in parent"));
         }
         this.children.splice(idx, 1);
-        console.log(`Remove end: ${this.children.length}`);
         // Remove html
         this.html.removeChild(c.html);
         c.parent = undefined;
@@ -52,18 +50,14 @@ class VElement {
      * @param {number} i
      */
     insertChild(c, i) {
-        console.log(`Insert start: ${this.children.length}`);
-        console.log(`Insert ${c.html.outerHTML} into ${this.html.outerHTML}`);
         c.parent?.removeChild(c);
         // Parent of c has been removed, set new parent
         c.parent = this;
         // Add it
         this.children.splice(i, 0, c);
-        console.log(`Insert end: ${this.children.length}`);
         // Update html parent
         const nxt = this.html.children[i];
         this.html.insertBefore(c.html, nxt);
-        console.log(`Inserted ${c.html.outerHTML}: ${this.html.outerHTML}`);
     }
 }
 
@@ -186,11 +180,8 @@ export class NodeRenderer {
                 if (vel.children[i] !== vChild) {
                     vel.insertChild(vChild, i);
                 }
-                console.log(`Syncing ${cs.tag} vChild = ${vChild.tag}`);
                 this._syncElement(cs);
             }
-            console.log(vel.children.map(e => JSON.stringify(e.tag)));
-            console.log(`child list length = ${vel.children.length}`);
             // Any other children need to be removed
             while (vel.children.length > src.children.length) {
                 vel.removeChild(vel.children[vel.children.length - 1]);
