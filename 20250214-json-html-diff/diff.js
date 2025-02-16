@@ -19,39 +19,13 @@ class VElement {
     html;
 
     /**
-     * @param {NodeDesc} desc
+     * @param {string} tag
      */
-    constructor(desc) {
-        this.tag = desc.tag;
-        this.attributes = Object.assign({}, desc.attributes);
+    constructor(tag) {
+        this.tag = tag;
+        this.html = document.createElement(tag);
+        this.attributes = {};
         this.children = [];
-        if (desc.children) {
-            for (const cs of desc.children) {
-                const c = new VElement(cs);
-                c.parent = this;
-                this.children.push(c);
-            }
-            this.children = desc.children ? desc.children.map(c => new VElement(c)) : [];
-        }
-        this.html = document.createElement(this.tag);
-
-        for (const [k, v] of Object.entries(this.attributes)) {
-            if (typeof v === "boolean") {
-                if (v) {
-                    this.html.setAttribute(k, "");
-                }
-                else {
-                    this.html.removeAttribute(k);
-                }
-            }
-            else {
-                this.html.setAttribute(k, v.toString());
-            }
-        }
-        if (this.children) {
-            const children = this.children.map(c => c.html);
-            this.html.append(...children);
-        }
     }
 
     /**
@@ -60,11 +34,13 @@ class VElement {
      * @param {VElement} c
      */
     removeChild(c) {
+        console.log(`Remove start: ${this.children.length}`);
         const idx = this.children.indexOf(c);
         if (idx < 0) {
             throw (new Error("Child does not exist in parent"));
         }
         this.children.splice(idx, 1);
+        console.log(`Remove end: ${this.children.length}`);
         // Remove html
         this.html.removeChild(c.html);
         c.parent = undefined;
@@ -76,14 +52,18 @@ class VElement {
      * @param {number} i
      */
     insertChild(c, i) {
+        console.log(`Insert start: ${this.children.length}`);
+        console.log(`Insert ${c.html.outerHTML} into ${this.html.outerHTML}`);
         c.parent?.removeChild(c);
         // Parent of c has been removed, set new parent
         c.parent = this;
         // Add it
         this.children.splice(i, 0, c);
+        console.log(`Insert end: ${this.children.length}`);
         // Update html parent
         const nxt = this.html.children[i];
         this.html.insertBefore(c.html, nxt);
+        console.log(`Inserted ${c.html.outerHTML}: ${this.html.outerHTML}`);
     }
 }
 
@@ -101,71 +81,116 @@ export class NodeRenderer {
      */
     _elementMap = new Map();
 
+    /**
+     *
+     * @param {NodeDesc} desc
+     */
     constructor(desc) {
-        this._rootElement = new VElement(desc);
+        this._rootElement = new VElement(desc.tag);
+        this.sync(desc);
+    }
+
+    /**
+     *
+     * @param {NodeDesc} desc
+     */
+    registerNewElement(desc) {
+        const el = new VElement(desc.tag);
+        this._elementMap.set(desc, { vel: el, generation: this.gen });
+        return el;
+    }
+
+    sync(desc) {
+        // Next gen
+        this.gen++;
+
+        this.syncAttributes(desc, this._rootElement);
+
+        this.syncChildren(desc, this._rootElement);
+
+        this.cleanMap();
     }
 
     /**
      * Sync nodes
      * @param {NodeDesc} src
      */
-    sync(src) {
-        // Next gen
-        this.gen++;
-
+    _syncElement(src) {
         // Find generated virtual element that corresponds to the descriptor
         let entry = this._elementMap.get(src);
+
+        // Note: it should exist (apart from for the root element) since all children are created if non-existent
         if (!entry) {
-            // Does not exist yet, create it
-            entry = { vel: new VElement(src), generation: this.gen };
-            this._elementMap.set(src, entry);
+            throw new Error(`No entry for element ${src.tag} ${JSON.stringify(src.attributes)}. This should not happen as children are added to element list`);
         }
-        else {
-            entry.generation = this.gen;
-        }
+        entry.generation = this.gen;
         const vel = entry.vel;
 
-        // ***** Attributes
+        this.syncAttributes(src, vel);
+
+        this.syncChildren(src, vel);
+
+        // There's your result
+        return entry;
+    }
+
+    /**
+     *
+     * @param {NodeDesc} src
+     * @param {VElement} vel
+     */
+    syncAttributes(src, vel) {
         // remove attributes that will not be present anymore
         for (const k of Object.keys(vel.attributes)) {
-            if (!src.hasOwnProperty(k)) {
-                this.html.removeAttribute(k);
+            if (!src.attributes?.hasOwnProperty(k)) {
+                vel.html.removeAttribute(k);
                 delete vel.attributes[k];
             }
         }
         // add/modify new attributes
-        for (const [k, v] of Object.keys(src.attributes)) {
-            if (vel.attributes[k] !== v) {
-                vel.attributes[k] = v;
-                if (typeof v === "boolean") {
-                    if (v) {
-                        this.html.setAttribute(k, "");
+        if (src.attributes) {
+            for (const [k, v] of Object.entries(src.attributes)) {
+                if (vel.attributes[k] !== v) {
+                    vel.attributes[k] = v;
+                    if (typeof v === "boolean") {
+                        if (v) {
+                            vel.html.setAttribute(k, "");
+                        }
+                        else {
+                            vel.html.removeAttribute(k);
+                        }
                     }
                     else {
-                        this.html.removeAttribute(k);
+                        vel.html.setAttribute(k, v.toString());
                     }
-                }
-                else {
-                    this.html.setAttribute(k, v.toString());
                 }
             }
         }
+    }
 
-        // ***** Children
+    /**
+     *
+     * @param {NodeDesc} src
+     * @param {VElement} vel
+     */
+    syncChildren(src, vel) {
         if (src.children) {
             for (let i = 0; i < src.children.length; i++) {
                 const cs = src.children[i];
-                if (vel.children[i] !== cs) {
-                    // Does it exist yet?
-                    let c = this._elementMap.get(cs);
-                    if (!c) {
-                        c = { vel: new VElement(cs), generation: this.gen };
-                    }
-                    vel.insertChild(c.vel, i);
-                    // Insert element
-                    vel.children.splice(i, 0, c.vel);
+                /** Corresponding element */
+                let vChild = this._elementMap.get(cs)?.vel;
+                // Does it exist yet?
+                if (!vChild) {
+                    vChild = this.registerNewElement(cs);
                 }
+                if (vel.children[i] !== vChild) {
+                    vel.insertChild(vChild, i);
+                }
+                console.log(`Syncing ${cs.tag} vChild = ${vChild.tag}`);
+                this._syncElement(cs);
             }
+            console.log(vel.children.map(e => JSON.stringify(e.tag)));
+            console.log(`child list length = ${vel.children.length}`);
             // Any other children need to be removed
             while (vel.children.length > src.children.length) {
                 vel.removeChild(vel.children[vel.children.length - 1]);
@@ -175,18 +200,6 @@ export class NodeRenderer {
             vel.children.length = 0;
             vel.html.innerHTML = "";
         }
-
-
-        // TODO: modify children
-        //
-        // walk through children in source, 1 by one starting at 0
-        // if equal, go next
-        // if different, look for uuid in map and move child to that index
-        // when finished, remove all children in list past the length of the source child list
-        // Recursively sync each child in the list
-
-        // There's your result
-        return entry;
     }
 
     cleanMap() {

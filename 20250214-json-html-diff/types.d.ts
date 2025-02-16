@@ -2,7 +2,7 @@ interface NodeDesc {
     /** Tag name (HTML-tag) */
     tag: string;
     /** Node attributes */
-    attributes: { [id: string]: any };
+    attributes?: { [id: string]: any };
     /** Node children */
     children?: NodeDesc[];
 }
